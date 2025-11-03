@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LaamSocial - Real Chat App</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+<style>
+  :root {
+    --primary: #6c63ff;
+    --primary-dark: #5a52d5;
+    --secondary: #ff6584;
+    --dark: #2d3748;
+    --light: #f8f9fa;
+    --gray: #a0aec0;
+    --success: #48bb78;
+    --warning: #ed8936;
+    --danger: #f56565;
+    --sidebar-width: 250px;
+    --header-height: 70px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  body {
+    background-color: #f5f7fb;
+    color: var(--dark);
+    line-height: 1.6;
+  }
+
+  /* Header Styles */
+  header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    height: var(--header-height);
+    padding: 0 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+  }
+
+  header h2 {
+    font-weight: 700;
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+  }
+
+  header div {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  #userEmail {
+    font-weight: 500;
+  }
+
+  #logoutBtn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  #logoutBtn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+  }
+
+  /* Main Container */
+  .container-dashboard {
+    display: flex;
+    margin-top: var(--header-height);
+    min-height: calc(100vh - var(--header-height));
+  }
+
+  /* Sidebar Styles */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem 0;
+    position: fixed;
+    height: calc(100vh - var(--header-height));
+    overflow-y: auto;
+    transition: all 0.3s ease;
+  }
+
+  .sidebar ul {
+    list-style: none;
+  }
+
+  .sidebar li {
+    padding: 1rem 2rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    border-left: 4px solid transparent;
+  }
+
+  .sidebar li:hover {
+    background: rgba(108, 99, 255, 0.1);
+    color: var(--primary);
+  }
+
+  .sidebar li.active {
+    background: rgba(108, 99, 255, 0.15);
+    color: var(--primary);
+    border-left: 4px solid var(--primary);
+    font-weight: 600;
+  }
+
+  .sidebar li i {
+    margin-right: 10px;
+    font-size: 1.2rem;
+    width: 24px;
+    text-align: center;
+  }
+
+  /* Main Content */
+  .main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    padding: 2rem;
+    transition: all 0.3s ease;
+  }
+
+  section {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    margin-bottom: 2rem;
+    display: none;
+  }
+
+  section.active {
+    display: block;
+    animation: fadeIn 0.5s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  h3 {
+    color: var(--primary);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #f0f0f0;
+    font-size: 1.5rem;
+  }
+
+  /* Post Section */
+  #postSection {
+    background: #f8f9ff;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 2rem;
+  }
+
+  #postText {
+    width: 100%;
+    min-height: 100px;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    resize: vertical;
+    font-size: 1rem;
+    transition: border 0.3s ease;
+  }
+
+  #postText:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+  }
+
+  .file-upload-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .file-upload-label {
+    background: var(--light);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    border: 1px dashed var(--gray);
+  }
+
+  .file-upload-label:hover {
+    background: #e9ecef;
+  }
+
+  #postImage {
+    display: none;
+  }
+
+  #postBtn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: block;
+    width: 100%;
+  }
+
+  #postBtn:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(108, 99, 255, 0.3);
+  }
+
+  /* Feed */
+  .post {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f0f0f0;
+  }
+
+  .post-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .post-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+
+  .post-user {
+    font-weight: 600;
+  }
+
+  .post-time {
+    color: var(--gray);
+    font-size: 0.85rem;
+  }
+
+  .post-content {
+    margin-bottom: 1rem;
+  }
+
+  .post-image {
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 1rem;
+  }
+
+  .post-actions {
+    display: flex;
+    gap: 1rem;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 1rem;
+  }
+
+  .post-action {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--gray);
+    transition: all 0.3s ease;
+  }
+
+  .post-action:hover {
+    color: var(--primary);
+  }
+
+  /* Friends Section */
+  .friends-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .friend-card {
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    text-align: center;
+    border: 1px solid #f0f0f0;
+  }
+
+  .friend-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .friend-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.5rem;
+    margin: 1.5rem auto 1rem;
+  }
+
+  .friend-name {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  .friend-status {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .online {
+    background: rgba(72, 187, 120, 0.2);
+    color: var(--success);
+  }
+
+  .offline {
+    background: rgba(160, 174, 192, 0.2);
+    color: var(--gray);
+  }
+
+  .friend-actions {
+    display: flex;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .friend-action {
+    flex: 1;
+    padding: 0.8rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .friend-action:hover {
+    background: #f8f9fa;
+  }
+
+  .friend-action.message {
+    color: var(--primary);
+  }
+
+  .friend-action.remove {
+    color: var(--danger);
+  }
+
+  /* Messages Section */
+  .messages-container {
+    display: flex;
+    gap: 1.5rem;
+    height: 500px;
+  }
+
+  .conversations-list {
+    width: 300px;
+    background: #f8f9ff;
+    border-radius: 10px;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+
+  .conversation {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 0.5rem;
+  }
+
+  .conversation:hover {
+    background: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  }
+
+  .conversation.active {
+    background: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .conversation-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+
+  .conversation-info {
+    flex: 1;
+  }
+
+  .conversation-name {
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+  }
+
+  .conversation-preview {
+    color: var(--gray);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  .conversation-time {
+    font-size: 0.75rem;
+    color: var(--gray);
+  }
+
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .chat-header {
+    padding: 1rem 1.5rem;
+    background: #f8f9ff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+  }
+
+  .chat-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    margin-right: 1rem;
+  }
+
+  .chat-user-info {
+    flex: 1;
+  }
+
+  .chat-user-name {
+    font-weight: 600;
+  }
+
+  .chat-user-status {
+    font-size: 0.8rem;
+    color: var(--success);
+  }
+
+  .chat-actions {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .chat-action {
+    color: var(--gray);
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .chat-action:hover {
+    color: var(--primary);
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .message {
+    max-width: 70%;
+    padding: 0.8rem 1rem;
+    border-radius: 18px;
+    position: relative;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .message.sent {
+    align-self: flex-end;
+    background: var(--primary);
+    color: white;
+    border-bottom-right-radius: 5px;
+  }
+
+  .message.received {
+    align-self: flex-start;
+    background: #f1f3f9;
+    color: var(--dark);
+    border-bottom-left-radius: 5px;
+  }
+
+  .message-time {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-top: 0.3rem;
+    text-align: right;
+  }
+
+  .chat-input-area {
+    display: flex;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+    gap: 1rem;
+  }
+
+  #chatInput {
+    flex: 1;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 24px;
+    outline: none;
+    transition: all 0.3s ease;
+  }
+
+  #chatInput:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
+  }
+
+  #sendBtn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+
+  #sendBtn:hover {
+    background: var(--primary-dark);
+    transform: scale(1.05);
+  }
+
+  /* Notifications Section */
+  .notification {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    background: #f8f9ff;
+    border-left: 4px solid var(--primary);
+  }
+
+  .notification.unread {
+    background: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  }
+
+  .notification-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  .notification-content {
+    flex: 1;
+  }
+
+  .notification-title {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  .notification-time {
+    font-size: 0.8rem;
+    color: var(--gray);
+  }
+
+  /* Profile Section */
+  .profile-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .profile-avatar-container {
+    position: relative;
+    margin-right: 2rem;
+  }
+
+  #profilePicDisplay {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .profile-avatar-overlay {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background: var(--primary);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .profile-avatar-overlay:hover {
+    background: var(--primary-dark);
+    transform: scale(1.1);
+  }
+
+  .profile-info h4 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .profile-stats {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+  }
+
+  .profile-stat {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    color: var(--gray);
+  }
+
+  .profile-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .detail-card {
+    background: #f8f9ff;
+    padding: 1.5rem;
+    border-radius: 10px;
+  }
+
+  .detail-card h5 {
+    margin-bottom: 1rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .detail-item:last-child {
+    border-bottom: none;
+  }
+
+  .detail-label {
+    color: var(--gray);
+  }
+
+  .detail-value {
+    font-weight: 500;
+  }
+
+  /* Login Form */
+  .login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  }
+
+  .login-form {
+    background: white;
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .login-form h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    color: var(--primary);
+  }
+
+  .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+  }
+
+  .form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    width: 100%;
+    transition: all 0.3s ease;
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-dark);
+  }
+
+  .form-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+  }
+
+  .form-footer a {
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  .form-footer a:hover {
+    text-decoration: underline;
+  }
+
+  .error-message {
+    color: var(--danger);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    display: none;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 992px) {
+    .sidebar {
+      width: 70px;
+      overflow: visible;
+    }
+    
+    .sidebar li span {
+      display: none;
+    }
+    
+    .sidebar li i {
+      margin-right: 0;
+      font-size: 1.5rem;
+    }
+    
+    .main-content {
+      margin-left: 70px;
+    }
+    
+    .messages-container {
+      flex-direction: column;
+      height: auto;
+    }
+    
+    .conversations-list {
+      width: 100%;
+      max-height: 200px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      transform: translateX(-100%);
+      z-index: 999;
+    }
+    
+    .sidebar.active {
+      transform: translateX(0);
+    }
+    
+    .main-content {
+      margin-left: 0;
+      padding: 1rem;
+    }
+    
+    .menu-toggle {
+      display: block;
+      position: fixed;
+      top: 1rem;
+      left: 1rem;
+      z-index: 1001;
+      background: var(--primary);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    }
+    
+    .profile-header {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .profile-avatar-container {
+      margin-right: 0;
+      margin-bottom: 1rem;
+    }
+    
+    .friends-grid {
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+  }
+
+  .hidden {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- Login Form -->
+<div id="loginContainer" class="login-container">
+  <div class="login-form">
+    <h2>LaamSocial</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" class="form-control" placeholder="Enter your email" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" class="form-control" placeholder="Enter your password" required>
+      </div>
+      <button type="submit" class="btn-primary">Login</button>
+      <div class="error-message" id="loginError"></div>
+    </form>
+    <div class="form-footer">
+      <p>Don't have an account? <a href="#" id="showRegister">Register</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- Register Form -->
+<div id="registerContainer" class="login-container hidden">
+  <div class="login-form">
+    <h2>Create Account</h2>
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="registerName">Full Name</label>
+        <input type="text" id="registerName" class="form-control" placeholder="Enter your full name" required>
+      </div>
+      <div class="form-group">
+        <label for="registerEmail">Email</label>
+        <input type="email" id="registerEmail" class="form-control" placeholder="Enter your email" required>
+      </div>
+      <div class="form-group">
+        <label for="registerPassword">Password</label>
+        <input type="password" id="registerPassword" class="form-control" placeholder="Create a password" required>
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" class="form-control" placeholder="Confirm your password" required>
+      </div>
+      <button type="submit" class="btn-primary">Register</button>
+      <div class="error-message" id="registerError"></div>
+    </form>
+    <div class="form-footer">
+      <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboardContainer" class="hidden">
+  <header>
+    <h2>LaamSocial</h2>
+    <div>
+      <span id="userEmail"></span>
+      <button id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <div class="menu-toggle">
+    <i class="fas fa-bars"></i>
+  </div>
+
+  <div class="container-dashboard">
+    <!-- Sidebar / Menu -->
+    <nav class="sidebar">
+      <ul>
+        <li class="active" data-section="homeSection">
+          <i class="fas fa-home"></i>
+          <span>Home</span>
+        </li>
+        <li data-section="friendsSection">
+          <i class="fas fa-user-friends"></i>
+   <span>Friends</span>
+        </li>
+        <li data-section="messagesSection">
+          <i class="fas fa-comments"></i>
+          <span>Messages</span>
+        </li>
+        <li data-section="notificationsSection">
+          <i class="fas fa-bell"></i>
+          <span>Notifications</span>
+        </li>
+        <li data-section="profileSection">
+          <i class="fas fa-user-cog"></i>
+          <span>Profile / Settings</span>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Home Feed -->
+      <section id="homeSection" class="active">
+        <h3>Home Feed</h3>
+        <div id="postSection">
+          <textarea id="postText" placeholder="What's on your mind?"></textarea>
+          <div class="file-upload-container">
+            <label for="postImage" class="file-upload-label">
+              <i class="fas fa-image"></i>
+              <span>Add Image</span>
+            </label>
+            <input type="file" id="postImage" accept="image/*">
+          </div>
+          <button id="postBtn">Post</button>
+        </div>
+        <div id="feed">
+          <div class="post">
+            <div class="post-header">
+              <div class="post-avatar">LS</div>
+              <div>
+                <div class="post-user">LaamSocial</div>
+                <div class="post-time">Just now</div>
+              </div>
+            </div>
+            <div class="post-content">
+              Welcome to LaamSocial! Start connecting with your friends and share your thoughts.
+            </div>
+            <div class="post-actions">
+              <div class="post-action">
+                <i class="far fa-heart"></i>
+                <span>0</span>
+              </div>
+              <div class="post-action">
+                <i class="far fa-comment"></i>
+                <span>0</span>
+              </div>
+              <div class="post-action">
+                <i class="far fa-share-square"></i>
+                <span>0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Friends Section -->
+      <section id="friendsSection">
+        <h3>Friends</h3>
+        <div class="friends-grid" id="friendsList">
+          <!-- Friends will be loaded dynamically -->
+        </div>
+      </section>
+
+      <!-- Messages Section -->
+      <section id="messagesSection">
+        <h3>Messages</h3>
+        <div class="messages-container">
+          <div class="conversations-list" id="conversationsList">
+            <!-- Conversations will be loaded dynamically -->
+          </div>
+          
+          <div class="chat-area">
+            <div class="chat-header">
+              <div class="chat-user-avatar" id="chatUserAvatar">?</div>
+              <div class="chat-user-info">
+                <div class="chat-user-name" id="chatUserName">Select a conversation</div>
+                <div class="chat-user-status" id="chatUserStatus"></div>
+              </div>
+              <div class="chat-actions">
+                <div class="chat-action"><i class="fas fa-phone"></i></div>
+                <div class="chat-action"><i class="fas fa-video"></i></div>
+                <div class="chat-action"><i class="fas fa-ellipsis-v"></i></div>
+              </div>
+            </div>
+            
+            <div class="chat-messages" id="chatBox">
+              <div class="message received">
+                Select a friend to start chatting
+                <div class="message-time">Now</div>
+              </div>
+            </div>
+            
+            <div class="chat-input-area">
+              <input type="text" id="chatInput" placeholder="Type a message..." disabled>
+              <button id="sendBtn" disabled><i class="fas fa-paper-plane"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Notifications Section -->
+      <section id="notificationsSection">
+        <h3>Notifications</h3>
+        <div id="notificationsList">
+          <!-- Notifications will be loaded dynamically -->
+        </div>
+      </section>
+
+      <!-- Profile / Settings Section -->
+      <section id="profileSection">
+        <h3>Profile / Settings</h3>
+        <div class="profile-header">
+          <div class="profile-avatar-container">
+            <img id="profilePicDisplay" src="https://via.placeholder.com/120" alt="Profile Picture">
+            <div class="profile-avatar-overlay">
+              <i class="fas fa-camera"></i>
+            </div>
+          </div>
+          <div class="profile-info">
+            <h4 id="profileName">Loading...</h4>
+            <p id="profileEmail">Loading...</p>
+            <p id="lastSeen">Last seen: Loading...</p>
+            <div class="profile-stats">
+              <div class="profile-stat">
+                <div class="stat-value" id="friendsCount">0</div>
+                <div class="stat-label">Friends</div>
+              </div>
+              <div class="profile-stat">
+                <div class="stat-value" id="postsCount">0</div>
+                <div class="stat-label">Posts</div>
+              </div>
+              <div class="profile-stat">
+                <div class="stat-value" id="messagesCount">0</div>
+                <div class="stat-label">Messages</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="profile-details">
+          <div class="detail-card">
+            <h5><i class="fas fa-user"></i> Personal Information</h5>
+            <div class="detail-item">
+              <span class="detail-label">Full Name</span>
+              <span class="detail-value" id="profileFullName">Loading...</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Email</span>
+              <span class="detail-value" id="profileEmailDetail">Loading...</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Member Since</span>
+              <span class="detail-value" id="memberSince">Loading...</span>
+            </div>
+          </div>
+          
+          <div class="detail-card">
+            <h5><i class="fas fa-cog"></i> Account Settings</h5>
+            <div class="detail-item">
+              <span class="detail-label">Privacy</span>
+              <span class="detail-value">Friends</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Language</span>
+              <span class="detail-value">English</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Notifications</span>
+              <span class="detail-value">Enabled</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Theme</span>
+              <span class="detail-value">Light</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script>
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDy_GTVZvwCZp8eLYvd_TUPI-uo_Jp5MpY",
+    authDomain: "laamsocial-98cce.firebaseapp.com",
+    projectId: "laamsocial-98cce",
+    storageBucket: "laamsocial-98cce.firebasestorage.app",
+    messagingSenderId: "649707204234",
+    appId: "1:649707204234:web:2f22441b4dbbacc5674773"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
+  // DOM Elements
+  const loginContainer = document.getElementById('loginContainer');
+  const registerContainer = document.getElementById('registerContainer');
+  const dashboardContainer = document.getElementById('dashboardContainer');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const showRegister = document.getElementById('showRegister');
+  const showLogin = document.getElementById('showLogin');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const userEmail = document.getElementById('userEmail');
+  const profileEmail = document.getElementById('profileEmail');
+  const profileEmailDetail = document.getElementById('profileEmailDetail');
+  const profileName = document.getElementById('profileName');
+  const profileFullName = document.getElementById('profileFullName');
+  const lastSeen = document.getElementById('lastSeen');
+  const memberSince = document.getElementById('memberSince');
+  const friendsCount = document.getElementById('friendsCount');
+  const postsCount = document.getElementById('postsCount');
+  const messagesCount = document.getElementById('messagesCount');
+  const postBtn = document.getElementById('postBtn');
+  const postText = document.getElementById('postText');
+  const feed = document.getElementById('feed');
+  const friendsList = document.getElementById('friendsList');
+  const conversationsList = document.getElementById('conversationsList');
+  const chatBox = document.getElementById('chatBox');
+  const chatInput = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const chatUserName = document.getElementById('chatUserName');
+  const chatUserAvatar = document.getElementById('chatUserAvatar');
+  const chatUserStatus = document.getElementById('chatUserStatus');
+  const notificationsList = document.getElementById('notificationsList');
+
+  // Current user and chat state
+  let currentUser = null;
+  let selectedChatId = null;
+  let selectedUserId = null;
+  let chatListener = null;
+ // Auth state observer
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      // User is signed in
+      currentUser = user;
+      showDashboard();
+      loadUserData();
+      loadPosts();
+      loadFriends();
+      loadConversations();
+      loadNotifications();
+    } else {
+      // User is signed out
+      showLoginForm();
+    }
+  });
+
+  // Show login form
+  function showLoginForm() {
+    loginContainer.classList.remove('hidden');
+    registerContainer.classList.add('hidden');
+    dashboardContainer.classList.add('hidden');
+  }
+
+  // Show register form
+  function showRegisterForm() {
+    loginContainer.classList.add('hidden');
+    registerContainer.classList.remove('hidden');
+    dashboardContainer.classList.add('hidden');
+  }
+
+  // Show dashboard
+  function showDashboard() {
+    loginContainer.classList.add('hidden');
+    registerContainer.classList.add('hidden');
+    dashboardContainer.classList.remove('hidden');
+    userEmail.textContent = currentUser.email;
+  }
+
+  // Load user data
+  function loadUserData() {
+    db.collection('users').doc(currentUser.uid).get().then(doc => {
+      if (doc.exists) {
+        const userData = doc.data();
+        profileName.textContent = userData.name;
+        profileFullName.textContent = userData.name;
+        profileEmail.textContent = currentUser.email;
+        profileEmailDetail.textContent = currentUser.email;
+        
+        // Format dates
+        const lastSeenDate = userData.lastSeen ? userData.lastSeen.toDate() : new Date();
+        lastSeen.textContent = `Last seen: ${formatDate(lastSeenDate)}`;
+        
+        const memberSinceDate = userData.createdAt ? userData.createdAt.toDate() : new Date();
+        memberSince.textContent = formatDate(memberSinceDate, true);
+      }
+    });
+  }
+
+  // Format date for display
+  function formatDate(date, fullDate = false) {
+    if (fullDate) {
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    }
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  }
+
+  // Load posts
+  function loadPosts() {
+    db.collection('posts')
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .onSnapshot(snapshot => {
+        feed.innerHTML = '';
+        let count = 0;
+        
+        snapshot.forEach(doc => {
+          const post = doc.data();
+          const postElement = createPostElement(post, doc.id);
+          feed.appendChild(postElement);
+          count++;
+        });
+        
+        postsCount.textContent = count;
+        
+        if (snapshot.empty) {
+          feed.innerHTML = '<div class="post"><div class="post-content">No posts yet. Be the first to post something!</div></div>';
+        }
+      });
+  }
+
+  // Create post element
+  function createPostElement(post, postId) {
+    const postElement = document.createElement('div');
+    postElement.className = 'post';
+    
+    // Get user initials for avatar
+    const userName = post.authorName || 'Unknown';
+    const userInitials = getUserInitials(userName);
+    
+    postElement.innerHTML = `
+      <div class="post-header">
+        <div class="post-avatar">${userInitials}</div>
+        <div>
+          <div class="post-user">${userName}</div>
+          <div class="post-time">${formatDate(post.createdAt.toDate())}</div>
+        </div>
+      </div>
+      <div class="post-content">
+        ${post.text}
+      </div>
+      <div class="post-actions">
+        <div class="post-action">
+          <i class="far fa-heart"></i>
+          <span>${post.likes || 0}</span>
+        </div>
+        <div class="post-action">
+          <i class="far fa-comment"></i>
+          <span>${post.comments || 0}</span>
+        </div>
+        <div class="post-action">
+          <i class="far fa-share-square"></i>
+          <span>${post.shares || 0}</span>
+        </div>
+      </div>
+    `;
+    
+    return postElement;
+  }
+
+  // Get user initials
+  function getUserInitials(name) {
+    return name.split(' ').map(part => part[0]).join('').toUpperCase().substring(0, 2);
+  }
+
+  // Load friends
+  function loadFriends() {
+    // In a real app, you would query the user's friends
+    // For demo purposes, we'll load all users except the current user
+    db.collection('users')
+      .where('uid', '!=', currentUser.uid)
+      .limit(20)
+      .get()
+      .then(snapshot => {
+        friendsList.innerHTML = '';
+        let count = 0;
+        
+        snapshot.forEach(doc => {
+          const user = doc.data();
+          const friendElement = createFriendElement(user);
+          friendsList.appendChild(friendElement);
+          count++;
+        });
+        
+        friendsCount.textContent = count;
+        
+        if (snapshot.empty) {
+          friendsList.innerHTML = '<p>No users found. Invite your friends to join!</p>';
+        }
+      })
+      .catch(error => {
+        console.error('Error loading friends:', error);
+        friendsList.innerHTML = '<p>Error loading users. Please try again.</p>';
+      });
+  }
+
+  // Create friend element
+  function createFriendElement(user) {
+    const friendElement = document.createElement('div');
+    friendElement.className = 'friend-card';
+    
+    const userInitials = getUserInitials(user.name);
+    const isOnline = Math.random() > 0.5; // Random online status for demo
+    
+    friendElement.innerHTML = `
+      <div class="friend-avatar">${userInitials}</div>
+      <div class="friend-name">${user.name}</div>
+      <div class="friend-status ${isOnline ? 'online' : 'offline'}">${isOnline ? 'Online' : 'Offline'}</div>
+      <div class="friend-actions">
+        <div class="friend-action message" data-userid="${user.uid}">
+          <i class="fas fa-comment"></i>
+        </div>
+        <div class="friend-action remove">
+          <i class="fas fa-user-minus"></i>
+        </div>
+      </div>
+    `;
+    
+    // Add event listener for message button
+    const messageBtn = friendElement.querySelector('.friend-action.message');
+    messageBtn.addEventListener('click', () => {
+      startChatWithUser(user);
+    });
+    
+    return friendElement;
+  }
+
+  // Load conversations
+  function loadConversations() {
+    // In a real app, you would query the user's conversations
+    // For demo, we'll create some mock conversations
+    db.collection('users')
+      .where('uid', '!=', currentUser.uid)
+      .limit(5)
+      .get()
+      .then(snapshot => {
+        conversationsList.innerHTML = '';
+        
+        snapshot.forEach(doc => {
+          const user = doc.data();
+          const conversationElement = createConversationElement(user);
+          conversationsList.appendChild(conversationElement);
+        });
+        
+        if (snapshot.empty) {
+          conversationsList.innerHTML = '<p>No conversations yet.</p>';
+        }
+      })
+      .catch(error => {
+        console.error('Error loading conversations:', error);
+        conversationsList.innerHTML = '<p>Error loading conversations.</p>';
+      });
+  }
+
+  // Create conversation element
+  function createConversationElement(user) {
+    const conversationElement = document.createElement('div');
+    conversationElement.className = 'conversation';
+    conversationElement.dataset.userId = user.uid;
+    
+    const userInitials = getUserInitials(user.name);
+    
+    conversationElement.innerHTML = `
+      <div class="conversation-avatar">${userInitials}</div>
+      <div class="conversation-info">
+        <div class="conversation-name">${user.name}</div>
+        <div class="conversation-preview">Click to start a conversation</div>
+      </div>
+      <div class="conversation-time">Now</div>
+    `;
+    
+    conversationElement.addEventListener('click', () => {
+      startChatWithUser(user);
+    });
+    
+    return conversationElement;
+  }
+
+  // Start chat with user
+  function startChatWithUser(user) {
+    selectedUserId = user.uid;
+    chatUserName.textContent = user.name;
+    chatUserAvatar.textContent = getUserInitials(user.name);
+    chatUserStatus.textContent = 'Online';
+    
+    // Enable chat input
+    chatInput.disabled = false;
+    sendBtn.disabled = false;
+    
+    // Clear previous chat listener
+    if (chatListener) {
+      chatListener();
+    }
+      // Generate chat ID (combination of both user IDs, sorted)
+    const chatId = [currentUser.uid, user.uid].sort().join('_');
+    selectedChatId = chatId;
+    
+    // Load messages for this chat
+    loadChatMessages(chatId);
+    
+    // Update UI to show active conversation
+    document.querySelectorAll('.conversation').forEach(conv => {
+      conv.classList.remove('active');
+      if (conv.dataset.userId === user.uid) {
+        conv.classList.add('active');
+      }
+    });
+  }
+
+  // Load chat messages
+  function loadChatMessages(chatId) {
+    chatBox.innerHTML = '<div class="message received">Starting a new conversation</div>';
+    
+    chatListener = db.collection('chats')
+      .doc(chatId)
+      .collection('messages')
+      .orderBy('timestamp', 'asc')
+      .onSnapshot(snapshot => {
+        chatBox.innerHTML = '';
+        let count = 0;
+        
+        snapshot.forEach(doc => {
+          const message = doc.data();
+          const messageElement = createMessageElement(message);
+          chatBox.appendChild(messageElement);
+          count++;
+        });
+        
+        messagesCount.textContent = count;
+        
+        // Scroll to bottom
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        if (snapshot.empty) {
+          chatBox.innerHTML = '<div class="message received">No messages yet. Start the conversation!</div>';
+        }
+      });
+  }
+
+  // Create message element
+  function createMessageElement(message) {
+    const messageElement = document.createElement('div');
+    const isSent = message.senderId === currentUser.uid;
+    
+    messageElement.className = `message ${isSent ? 'sent' : 'received'}`;
+    messageElement.innerHTML = `
+      ${message.text}
+      <div class="message-time">${formatDate(message.timestamp.toDate())}</div>
+    `;
+    
+    return messageElement;
+  }
+
+  // Load notifications
+  function loadNotifications() {
+    // In a real app, you would query the user's notifications
+    // For demo, we'll create some mock notifications
+    const notifications = [
+      {
+        type: 'friend_request',
+        title: 'Michael Jordan sent you a friend request',
+        time: new Date(Date.now() - 5 * 60000) // 5 minutes ago
+      },
+      {
+        type: 'like',
+        title: 'Sarah Roberts liked your post',
+        time: new Date(Date.now() - 2 * 3600000) // 2 hours ago
+      },
+      {
+        type: 'comment',
+        title: 'David Wilson commented on your photo',
+        time: new Date(Date.now() - 5 * 3600000) // 5 hours ago
+      }
+    ];
+    
+    notificationsList.innerHTML = '';
+    
+    notifications.forEach(notification => {
+      const notificationElement = createNotificationElement(notification);
+      notificationsList.appendChild(notificationElement);
+    });
+  }
+
+  // Create notification element
+  function createNotificationElement(notification) {
+    const notificationElement = document.createElement('div');
+    notificationElement.className = 'notification unread';
+    
+    let icon = 'fas fa-bell';
+    if (notification.type === 'friend_request') icon = 'fas fa-user-plus';
+    if (notification.type === 'like') icon = 'fas fa-heart';
+    if (notification.type === 'comment') icon = 'fas fa-comment';
+    
+    notificationElement.innerHTML = `
+      <div class="notification-icon">
+        <i class="${icon}"></i>
+      </div>
+      <div class="notification-content">
+        <div class="notification-title">${notification.title}</div>
+        <div class="notification-time">${formatDate(notification.time)}</div>
+      </div>
+    `;
+    
+    return notificationElement;
+  }
+
+  // Event Listeners
+  loginForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    const errorElement = document.getElementById('loginError');
+    
+    auth.signInWithEmailAndPassword(email, password)
+      .then(userCredential => {
+        // Signed in
+        errorElement.style.display = 'none';
+      })
+      .catch(error => {
+        errorElement.textContent = error.message;
+        errorElement.style.display = 'block';
+      });
+  });
+
+  registerForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('registerName').value;
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    const errorElement = document.getElementById('registerError');
+    
+    if (password !== confirmPassword) {
+      errorElement.textContent = 'Passwords do not match';
+      errorElement.style.display = 'block';
+      return;
+    }
+    
+    auth.createUserWithEmailAndPassword(email, password)
+      .then(userCredential => {
+        // Signed up
+        const user = userCredential.user;
+        
+        // Create user document in Firestore
+        return db.collection('users').doc(user.uid).set({
+          uid: user.uid,
+          name: name,
+          email: email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      })
+      .then(() => {
+        errorElement.style.display = 'none';
+      })
+      .catch(error => {
+        errorElement.textContent = error.message;
+        errorElement.style.display = 'block';
+      });
+  });
+
+  showRegister.addEventListener('click', e => {
+    e.preventDefault();
+    showRegisterForm();
+  });
+
+  showLogin.addEventListener('click', e => {
+    e.preventDefault();
+    showLoginForm();
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    auth.signOut();
+  });
+
+  postBtn.addEventListener('click', () => {
+    const text = postText.value.trim();
+    if (text) {
+      // Create post in Firestore
+      db.collection('posts').add({
+        text: text,
+        authorId: currentUser.uid,
+        authorName: currentUser.displayName || 'User',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        likes: 0,
+        comments: 0,
+        shares: 0
+      })
+      .then(() => {
+        postText.value = '';
+      })
+      .catch(error => {
+        console.error('Error creating post:', error);
+        alert('Error creating post. Please try again.');
+      });
+    }
+  });
+
+  sendBtn.addEventListener('click', sendMessage);
+
+  chatInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+
+  function sendMessage() {
+    const text = chatInput.value.trim();
+    if (text && selectedChatId) {
+      // Add message to Firestore
+      db.collection('chats')
+        .doc(selectedChatId)
+        .collection('messages')
+        .add({
+          text: text,
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || 'User',
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+          chatInput.value = '';
+        })
+        .catch(error => {
+          console.error('Error sending message:', error);
+          alert('Error sending message. Please try again.');
+        });
+    }
+  }
+
+  // Menu Navigation
+  const menuItems = document.querySelectorAll('.sidebar li');
+  const sections = document.querySelectorAll('.main-content section');
+  
+  menuItems.forEach(item => {
+    item.addEventListener('click', function() {
+      const targetSection = this.getAttribute('data-section');
+      
+      // Update active menu item
+      menuItems.forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Show target section
+      sections.forEach(section => {
+        section.classList.remove('active');
+        if (section.id === targetSection) {
+          section.classList.add('active');
+        }
+      });
+    });
+  });
+
+  // Mobile menu toggle
+  const menuToggle = document.querySelector('.menu-toggle');
+  const sidebar = document.querySelector('.sidebar');
+  
+  menuToggle.addEventListener('click', function() {
+    sidebar.classList.toggle('active');
+  });
+
+  // Update last seen when user leaves the app
+  window.addEventListener('beforeunload', () => {
+    if (currentUser) {
+      db.collection('users').doc(currentUser.uid).update({
+        lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+  });
+</script>
+</body>
+</html>
