@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="so">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Laam — BSC Wallet (Create & Import)</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.0/dist/ethers.min.js"></script>
+  <style>
+    body { font-family: Inter, Arial, sans-serif; background:#f6f9fc; padding:24px; color:#0b2545; }
+    .card { max-width:720px; margin:16px auto; background:#ffffff; border-radius:12px; padding:20px; box-shadow:0 6px 18px rgba(11,37,69,0.06); }
+    h1 { margin:0 0 12px 0; font-size:20px; }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    button { background:#0b66ff; color:white; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; }
+    .btn-secondary { background:#e6eefc; color:#0b66ff; }
+    input[type="text"], textarea { width:100%; padding:10px; border-radius:8px; border:1px solid #d7e1ef; box-sizing:border-box; }
+    .result { background:#f1f6ff; padding:12px; border-radius:8px; margin-top:12px; word-break:break-all; }
+    .label { font-size:13px; color:#4b5b7a; margin-bottom:6px; display:block; }
+    .small { font-size:13px; color:#4b5b7a; }
+    .warning { background:#fff4f0; border:1px solid #ffd7c2; padding:10px; border-radius:8px; color:#8a3b00; margin-top:10px; }
+    .controls { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+    .copy-btn { background:#0b66ff; color:#fff; border:none; padding:8px 10px; border-radius:8px; cursor:pointer; }
+    .saved-note { color:green; font-weight:600; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Laam — BSC Wallet Manager</h1>
+    <p class="small">Create new wallet (BSC mainnet compatible). Markaad abuurto, private key-ga dhab ah ayaa lagu siinayaa — ilaali si fiican!</p>
+
+    <!-- CREATE -->
+    <section id="createSection">
+      <label class="label">Create New Wallet</label>
+      <div class="row">
+        <button id="btnCreate">Create New Wallet</button>
+        <button id="btnCreateAndSave" class="btn-secondary">Create &amp; Save (local)</button>
+      </div>
+
+      <div id="createResult" class="result" style="display:none; margin-top:12px;">
+        <div><strong>Address:</strong> <span id="cwAddress"></span></div>
+        <div style="margin-top:8px;">
+          <strong>Private Key:</strong>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <input id="cwPrivateKey" type="text" readonly />
+            <button id="btnCopyPrivate" class="copy-btn">Copy</button>
+            <button id="btnShowMnemonic" class="btn-secondary">Show Mnemonic</button>
+          </div>
+        </div>
+
+        <div id="mnemonicContainer" style="display:none; margin-top:8px;">
+          <strong>Mnemonic (Seed phrase):</strong>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <textarea id="cwMnemonic" rows="2" readonly></textarea>
+            <button id="btnCopyMnemonic" class="copy-btn">Copy</button>
+          </div>
+        </div>
+
+        <div class="warning" style="margin-top:12px;">
+          <strong>Warning:</strong>
+          <div style="margin-top:6px;" class="small">
+            Ha la wadaagin private key-ga ama mnemonic dadka aadan kalsoonida ku qabin. Haddii qof helo, wuu ka qaadan karaa lacagtaada. Haddii aad doorato "Create &amp; Save", xogta waxay ku jiri doontaa browser-ka (localStorage) — kaliya isticmaal haddii aad ku kalsoon tahay qalabka.
+          </div>
+        </div>
+
+        <div class="controls">
+          <button id="btnDownloadKeystore" class="btn-secondary">Download Encrypted JSON (keystore)</button>
+          <button id="btnClearSaved" class="btn-secondary">Clear Saved Wallet</button>
+        </div>
+
+        <div id="savedNote" class="saved-note" style="display:none;">Wallet saved to localStorage.</div>
+      </div>
+    </section>
+
+    <hr style="margin:18px 0; border:none; border-top:1px solid #f0f4fb;" />
+
+    <!-- IMPORT -->
+    <section id="importSection">
+      <label class="label">Import Existing Wallet (Private Key)</label>
+      <input id="inputImportKey" type="text" placeholder="Enter private key (0x...)" />
+      <div class="row" style="margin-top:8px;">
+        <button id="btnImport">Import Wallet</button>
+        <button id="btnImportAndSave" class="btn-secondary">Import &amp; Save (local)</button>
+      </div>
+
+      <div id="importResult" class="result" style="display:none; margin-top:12px;">
+        <div><strong>Address:</strong> <span id="impAddress"></span></div>
+        <div style="margin-top:8px;"><strong>Private Key:</strong> <span id="impPrivate"></span></div>
+      </div>
+    </section>
+
+    <hr style="margin:18px 0; border:none; border-top:1px solid #f0f4fb;" />
+
+    <!-- BALANCE (OPTIONAL) -->
+    <section id="balanceSection">
+      <label class="label">Optional: Check BNB Balance (BSC mainnet)</label>
+      <div class="row">
+        <button id="btnCheckBalance" class="btn-secondary">Check Balance of Current Wallet</button>
+        <div id="balanceOutput" class="small" style="margin-left:8px;"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Provider (BSC mainnet public RPC)
+    const provider = new ethers.JsonRpcProvider('https://bsc-dataseed.binance.org/');
+
+    // Elements
+    const btnCreate = document.getElementById('btnCreate');
+    const btnCreateAndSave = document.getElementById('btnCreateAndSave');
+    const createResult = document.getElementById('createResult');
+    const cwAddress = document.getElementById('cwAddress');
+    const cwPrivateKey = document.getElementById('cwPrivateKey');
+    const btnCopyPrivate = document.getElementById('btnCopyPrivate');
+    const btnShowMnemonic = document.getElementById('btnShowMnemonic');
+    const mnemonicContainer = document.getElementById('mnemonicContainer');
+    const cwMnemonic = document.getElementById('cwMnemonic');
+    const btnCopyMnemonic = document.getElementById('btnCopyMnemonic');
+    const btnDownloadKeystore = document.getElementById('btnDownloadKeystore');
+    const btnClearSaved = document.getElementById('btnClearSaved');
+    const savedNote = document.getElementById('savedNote');
+
+    const inputImportKey = document.getElementById('inputImportKey');
+    const btnImport = document.getElementById('btnImport');
+    const btnImportAndSave = document.getElementById('btnImportAndSave');
+    const importResult = document.getElementById('importResult');
+    const impAddress = document.getElementById('impAddress');
+    const impPrivate = document.getElementById('impPrivate');
+
+    const btnCheckBalance = document.getElementById('btnCheckBalance');
+    const balanceOutput = document.getElementById('balanceOutput');
+
+    let currentWallet = null; // ethers Wallet connected to provider
+    let lastPlainWallet = null; // plain Wallet (for access to mnemonic/privateKey before encryption)
+
+    // Utility: show element
+    function show(el){ el.style.display = ''; }
+    function hide(el){ el.style.display = 'none'; }
+
+    // Create wallet (display private key + mnemonic)
+    btnCreate.addEventListener('click', async () => {
+      const wallet = ethers.Wallet.createRandom();
+      lastPlainWallet = wallet;
+      currentWallet = wallet.connect(provider);
+      cwAddress.textContent = wallet.address;
+      cwPrivateKey.value = wallet.privateKey;
+      cwMnemonic.value = wallet.mnemonic?.phrase || '';
+      hide(mnemonicContainer);
+      savedNote.style.display = 'none';
+      show(createResult);
+    });
+
+    // Create and save to localStorage (unencrypted)
+    btnCreateAndSave.addEventListener('click', async () => {
+      const wallet = ethers.Wallet.createRandom();
+      lastPlainWallet = wallet;
+      currentWallet = wallet.connect(provider);
+      cwAddress.textContent = wallet.address;
+      cwPrivateKey.value = wallet.privateKey;
+      cwMnemonic.value = wallet.mnemonic?.phrase || '';
+      hide(mnemonicContainer);
+      // Save minimal details to localStorage (INSECURE)
+      const data = {
+        address: wallet.address,
+        privateKey: wallet.privateKey,
+        mnemonic: wallet.mnemonic?.phrase || null,
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem('laam_wallet', JSON.stringify(data));
+      savedNote.style.display = '';
+      show(createResult);
+    });
+
+    // Copy private key
+    btnCopyPrivate.addEventListener('click', async () => {
+      const pk = cwPrivateKey.value;
+      if (!pk) return alert('Private key ma jiro.');
+      try {
+        await navigator.clipboard.writeText(pk);
+        btnCopyPrivate.textContent = 'Copied!';
+        setTimeout(()=> btnCopyPrivate.textContent = 'Copy', 1500);
+      } catch (e) {
+        // fallback select
+        cwPrivateKey.select();
+        document.execCommand('copy');
+        btnCopyPrivate.textContent = 'Copied!';
+        setTimeout(()=> btnCopyPrivate.textContent = 'Copy', 1500);
+      }
+    });
+
+    // Show mnemonic
+    btnShowMnemonic.addEventListener('click', () => {
+      if (mnemonicContainer.style.display === 'none' || mnemonicContainer.style.display === '') {
+        show(mnemonicContainer);
+        btnShowMnemonic.textContent = 'Hide Mnemonic';
+      } else {
+        hide(mnemonicContainer);
+        btnShowMnemonic.textContent = 'Show Mnemonic';
+      }
+    });
+
+    // Copy mnemonic
+    btnCopyMnemonic.addEventListener('click', async () => {
+      const m = cwMnemonic.value;
+      if (!m) return alert('Mnemonic ma jiro.');
+      try {
+        await navigator.clipboard.writeText(m);
+        btnCopyMnemonic.textContent = 'Copied!';
+        setTimeout(()=> btnCopyMnemonic.textContent = 'Copy', 1500);
+      } catch (e) {
+        cwMnemonic.select();
+        document.execCommand('copy');
+        btnCopyMnemonic.textContent = 'Copied!';
+        setTimeout(()=> btnCopyMnemonic.textContent = 'Copy', 1500);
+      }
+    });
+
+    // Download encrypted JSON keystore
+    btnDownloadKeystore.addEventListener('click', async () => {
+      if (!lastPlainWallet) return alert('Fadlan abuur wallet cusub ama import garee marka hore.');
+      const password = prompt('Geli password aad ku encrypt gareyneyso keystore (xasuuso password-kan!)');
+      if (!password) return alert('Password lama gelin — howl joojisay.');
+      // ethers v6: wallet.encrypt(password) returns Promise<string>
+      try {
+        const json = await lastPlainWallet.encrypt(password);
+        const blob = new Blob([json], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `keystore-${lastPlainWallet.address}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Error encrypting keystore: ' + err?.message);
+      }
+    });
+
+    // Clear saved
+    btnClearSaved.addEventListener('click', () => {
+      localStorage.removeItem('laam_wallet');
+      savedNote.style.display = 'none';
+      alert('Saved wallet cleared from localStorage.');
+    });
+
+    // Import wallet
+    btnImport.addEventListener('click', () => {
+      const pk = inputImportKey.value.trim();
+      if (!pk) return alert('Fadlan geli private key.');
+      try {
+        const wallet = new ethers.Wallet(pk);
+        lastPlainWallet = wallet;
+        currentWallet = wallet.connect(provider);
+        impAddress.textContent = wallet.address;
+        impPrivate.textContent = wallet.privateKey;
+        show(importResult);
+      } catch (err) {
+        alert('Private key invalid: ' + err?.message);
+      }
+    });
+
+    // Import & save to localStorage (INSECURE)
+    btnImportAndSave.addEventListener('click', () => {
+      const pk = inputImportKey.value.trim();
+      if (!pk) return alert('Fadlan geli private key.');
+      try {
+        const wallet = new ethers.Wallet(pk);
+        lastPlainWallet = wallet;
+        currentWallet = wallet.connect(provider);
+        impAddress.textContent = wallet.address;
+        impPrivate.textContent = wallet.privateKey;
+        const data = {
+          address: wallet.address,
+          privateKey: wallet.privateKey,
+          mnemonic: wallet.mnemonic?.phrase || null,
+          importedAt: new Date().toISOString()
+        };
+        localStorage.setItem('laam_wallet', JSON.stringify(data));
+        show(importResult);
+        alert('Imported and saved to localStorage (INSECURE).');
+      } catch (err) {
+        alert('Private key invalid: ' + err?.message);
+      }
+    });
+
+    // Check balance (if wallet connected)
+    btnCheckBalance.addEventListener('click', async () => {
+      if (!currentWallet) return alert('Fadlan abuur ama import wallet marka hore.');
+      try {
+        balanceOutput.textContent = 'Fetching...';
+        const bal = await provider.getBalance(currentWallet.address);
+        const bnb = ethers.formatEther(bal);
+        balanceOutput.textContent = `${bnb} BNB`;
+      } catch (err) {
+        balanceOutput.textContent = 'Error: ' + (err?.message || err);
+      }
+    });
+
+    // On load: if saved wallet exists, show a note
+    (function loadSaved() {
+      const data = localStorage.getItem('laam_wallet');
+      if (data) {
+        savedNote.style.display = '';
+        savedNote.textContent = 'There is a wallet saved in localStorage. Use "Clear Saved Wallet" to remove it.';
+      }
+    })();
+
+  </script>
+</body>
+</html>
